@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trynet — Order Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0A0F3D;
+    --red:#CC0000;
+    --red-dark:#990000;
+    --white:#FFFFFF;
+    --off-white:#F8F8FC;
+    --grey-200:#DDDDE8;
+    --grey-600:#666680;
+    --green:#22C55E;
+
+    --paper:var(--off-white);
+    --panel:var(--white);
+    --ink:var(--navy);
+    --ink-soft:var(--grey-600);
+    --line:var(--grey-200);
+    --line-soft:#ECEAF3;
+
+    --font-display:'Bebas Neue', Impact, sans-serif;
+    --font-serif:'Playfair Display', Georgia, serif;
+    --font-body:'Inter', system-ui, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--font-body);background:var(--paper);color:var(--ink);}
+  .app{display:flex;min-height:100vh;}
+
+  .sidebar{width:230px;flex:0 0 230px;background:var(--navy);color:#E7E7F2;display:flex;flex-direction:column;padding:28px 20px;}
+  .brand-mark{font-family:var(--font-display);font-weight:400;font-size:30px;letter-spacing:.03em;line-height:1;}
+  .brand-try{color:#fff;}
+  .brand-net{color:var(--red);}
+  .brand-tag{margin-top:6px;font-size:11px;color:rgba(255,255,255,.5);letter-spacing:.14em;text-transform:uppercase;}
+  .brand-sub{margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15);font-size:13px;color:rgba(255,255,255,.78);}
+
+  .nav{margin-top:32px;display:flex;flex-direction:column;gap:2px;}
+  .nav-item{all:unset;cursor:pointer;padding:10px 12px;border-radius:4px;font-size:14.5px;color:#C7C7DA;transition:background .15s,color .15s;}
+  .nav-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+  .nav-item.active{background:var(--red);color:#fff;font-weight:600;}
+  .nav-item:focus-visible{outline:2px solid #fff;outline-offset:2px;}
+  .sidebar-foot{margin-top:auto;padding-top:20px;border-top:1px solid rgba(255,255,255,.12);}
+  .sidebar-foot .date{font-size:12px;color:rgba(255,255,255,.4);letter-spacing:.02em;}
+  .saved-status{margin-top:10px;font-size:11.5px;color:rgba(255,255,255,.55);letter-spacing:.02em;}
+  .backup-actions{display:flex;gap:8px;margin-top:12px;}
+  .mini-btn{all:unset;box-sizing:border-box;cursor:pointer;flex:1;text-align:center;padding:7px 4px;border:1px solid rgba(255,255,255,.28);border-radius:4px;font-size:11.5px;color:#E7E7F2;}
+  .mini-btn:hover{background:rgba(255,255,255,.1);color:#fff;}
+  .clear-btn{all:unset;cursor:pointer;color:rgba(255,255,255,.4);font-size:11.5px;margin-top:12px;display:block;text-decoration:underline;}
+  .clear-btn:hover{color:#fff;}
+
+  .recovery-banner{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:#FFF7ED;border:1px solid #F0A93B;border-radius:6px;padding:14px 18px;margin-bottom:22px;color:var(--ink);}
+  .recovery-banner .rb-text strong{display:block;font-size:14px;margin-bottom:2px;}
+  .recovery-banner .rb-text span{font-size:13px;color:var(--ink-soft);}
+  .recovery-banner .rb-actions{display:flex;gap:8px;flex-shrink:0;}
+
+  .main{flex:1;padding:36px 44px;max-width:1080px;}
+  .tab h1{font-family:var(--font-serif);font-size:26px;margin:0 0 4px;font-weight:700;color:var(--ink);}
+  .tab .lead{color:var(--ink-soft);font-size:14px;margin:0 0 26px;}
+
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:20px 22px;}
+  .panel h2{font-family:var(--font-serif);font-size:17px;margin:0 0 14px;font-weight:700;color:var(--ink);}
+
+  .grid-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px;}
+  .stat{border:1px solid var(--line);border-radius:6px;padding:16px 18px;background:var(--panel);}
+  .stat .num{font-family:var(--font-display);font-weight:400;font-size:28px;letter-spacing:.01em;}
+  .stat .label{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+  .stat.green .num{color:var(--green);}
+  .stat.amber .num{color:var(--red);}
+
+  table.ledger{width:100%;border-collapse:collapse;font-size:14px;}
+  table.ledger th{text-align:left;font-weight:600;font-size:12.5px;color:var(--ink-soft);padding:8px 10px;border-bottom:1px solid var(--line);}
+  table.ledger td{padding:10px;border-bottom:1px solid var(--line-soft);}
+  table.ledger tr:last-child td{border-bottom:none;}
+  .num-cell{font-variant-numeric:tabular-nums;font-weight:600;text-align:right;}
+
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;color:var(--ink-soft);margin-bottom:5px;}
+  .field input,.field select,.field textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:4px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink);}
+  .field input:disabled{background:var(--line-soft);color:var(--ink-soft);}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--red);outline-offset:0;border-color:var(--red);}
+  .row-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+
+  button.btn{all:unset;cursor:pointer;background:var(--red);color:#fff;padding:10px 18px;border-radius:4px;font-size:14px;font-weight:600;}
+  button.btn:hover{background:var(--red-dark);}
+  button.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);}
+  button.btn.ghost:hover{background:var(--line-soft);}
+  button.btn.small{padding:6px 12px;font-size:13px;}
+  button.btn:focus-visible{outline:2px solid var(--red-dark);outline-offset:2px;}
+
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;border:1px solid;}
+  .badge.due{color:var(--red);border-color:var(--red);background:rgba(204,0,0,.07);}
+  .badge.settled{color:var(--green);border-color:var(--green);background:rgba(34,197,94,.08);}
+  .badge.new{color:var(--navy);border-color:var(--navy);background:rgba(10,15,61,.05);}
+
+  .empty{border:1px dashed var(--line);border-radius:6px;padding:28px;text-align:center;color:var(--ink-soft);font-size:14px;}
+
+  details.customer{border:1px solid var(--line);border-radius:6px;margin-bottom:10px;background:var(--panel);overflow:hidden;}
+  details.customer summary{list-style:none;cursor:pointer;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  details.customer summary::-webkit-details-marker{display:none;}
+  details.customer[open] summary{border-bottom:1px solid var(--line);}
+  .cust-inner{padding:16px 18px;}
+
+  @media (max-width:760px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%;flex-direction:row;align-items:center;padding:14px 18px;}
+    .brand-tag,.brand-sub{display:none;}
+    .nav{flex-direction:row;margin-top:0;margin-left:auto;overflow-x:auto;}
+    .sidebar-foot{display:none;}
+    .main{padding:20px;}
+    .grid-stats{grid-template-columns:repeat(2,1fr);}
+    .row-2{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div>
+      <div class="brand-mark"><span class="brand-try">TRY</span><span class="brand-net">NET</span></div>
+      <div class="brand-tag">Designing &amp; Printing</div>
+      <div class="brand-sub">Order Book</div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">Dashboard</button>
+      <button class="nav-item" data-tab="neworder" onclick="switchTab('neworder')">New order</button>
+      <button class="nav-item" data-tab="customers" onclick="switchTab('customers')">Customers</button>
+      <button class="nav-item" data-tab="transactions" onclick="switchTab('transactions')">Transactions</button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="date">Today: <span id="todayDate"></span></div>
+      <div class="saved-status" id="savedStatus">No changes saved yet</div>
+      <div class="backup-actions">
+        <button class="mini-btn" type="button" onclick="downloadBackup()">Download backup</button>
+        <button class="mini-btn" type="button" onclick="triggerRestore()">Restore</button>
+      </div>
+      <input type="file" id="restoreFile" accept="application/json" style="display:none" onchange="handleRestoreFile(event)" />
+      <button class="clear-btn" onclick="resetData()">Clear all data</button>
+    </div>
+  </aside>
+  <main class="main">
+    <div id="recoveryBanner"></div>
+    <section id="tab-dashboard" class="tab"></section>
+    <section id="tab-neworder" class="tab" hidden></section>
+    <section id="tab-customers" class="tab" hidden></section>
+    <section id="tab-transactions" class="tab" hidden></section>
+  </main>
+</div>
+
+<script>
+let customers = [];
+let orders = [];
+let foundCustomer = null;
+let newOrderMode = null;
+
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function inr(n){ return '₹' + Number(n||0).toLocaleString('en-IN'); }
+function formatDate(d){ const dt = (d instanceof Date)? d : new Date(d); return dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function isToday(iso){ return iso === todayISO(); }
+function orderPaid(o){ return o.payments.reduce((s,p)=>s+Number(p.amount),0); }
+function orderDue(o){ return Number(o.total) - orderPaid(o); }
+
+function nextId(prefix, arr, getId){
+  let max = 0;
+  arr.forEach(item=>{ const n = parseInt(String(getId(item)).split('-')[1],10); if(n>max) max=n; });
+  return prefix + '-' + String(max+1).padStart(6,'0');
+}
+function nextCustomerId(){ return nextId('CUS', customers, c=>c.id); }
+function nextOrderId(){ return nextId('ORD', orders, o=>o.id); }
+function nextPaymentId(){
+  let all = [];
+  orders.forEach(o=> o.payments.forEach(p=> all.push(p)));
+  return nextId('PMT', all, p=>p.id);
+}
+
+// Storage layer: uses Claude's window.storage when available (inside Claude),
+// otherwise falls back to the browser's own localStorage (standalone file / other host).
+//
+// On top of that primary store, every save is also mirrored into a second,
+// independent localStorage copy on this device. That mirror is NOT a substitute
+// for the "Download backup" file (it still lives in this one browser), but it
+// means that if the primary store ever comes back empty — a sync hiccup, a
+// cleared account, a fresh browser profile — the app can detect that and offer
+// to recover from the mirror instead of silently starting blank.
+const LOCAL_PREFIX = 'trynet-orderbook:';
+const MIRROR_PREFIX = 'trynet-orderbook-mirror:';
+let lastSavedAt = null;
+let pendingRecovery = null;
+
+function hasClaudeStorage(){
+  return typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function';
+}
+async function storageGet(key){
+  if(hasClaudeStorage()){
+    const r = await window.storage.get(key, false);
+    return r ? JSON.parse(r.value) : null;
+  }
+  const v = localStorage.getItem(LOCAL_PREFIX+key);
+  return v ? JSON.parse(v) : null;
+}
+async function storageSet(key, value){
+  if(hasClaudeStorage()){
+    await window.storage.set(key, JSON.stringify(value), false);
+  } else {
+    localStorage.setItem(LOCAL_PREFIX+key, JSON.stringify(value));
+  }
+  mirrorSet(key, value);
+  touchSaved();
+}
+
+function mirrorGet(key){
+  try{
+    const v = localStorage.getItem(MIRROR_PREFIX+key);
+    return v ? JSON.parse(v) : null;
+  }catch(e){ return null; }
+}
+function mirrorSet(key, value){
+  try{ localStorage.setItem(MIRROR_PREFIX+key, JSON.stringify(value)); }
+  catch(e){ /* mirror is best-effort; never block a real save on it */ }
+}
+
+function touchSaved(){
+  lastSavedAt = new Date();
+  try{ localStorage.setItem(LOCAL_PREFIX+'lastSavedAt', lastSavedAt.toISOString()); }catch(e){}
+  renderSavedStatus();
+}
+function renderSavedStatus(){
+  const el = document.getElementById('savedStatus');
+  if(!el) return;
+  el.textContent = lastSavedAt
+    ? 'Saved ' + lastSavedAt.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})
+    : 'No changes saved yet';
+}
+
+async function loadAll(){
+  try{ customers = await storageGet('customers') || []; }catch(e){ customers = []; }
+  try{ orders = await storageGet('orders') || []; }catch(e){ orders = []; }
+
+  if(customers.length===0 && orders.length===0){
+    // Primary store looks empty — check whether the local mirror disagrees.
+    const mCust = mirrorGet('customers') || [];
+    const mOrd = mirrorGet('orders') || [];
+    if(mCust.length>0 || mOrd.length>0){
+      pendingRecovery = { customers: mCust, orders: mOrd };
+      showRecoveryBanner();
+    }
+  } else {
+    // Keep the mirror in sync with whatever we just loaded (self-heals the
+    // mirror the first time this update runs on existing data).
+    mirrorSet('customers', customers);
+    mirrorSet('orders', orders);
+  }
+
+  try{
+    const savedStr = localStorage.getItem(LOCAL_PREFIX+'lastSavedAt');
+    if(savedStr) lastSavedAt = new Date(savedStr);
+  }catch(e){}
+  renderSavedStatus();
+}
+async function saveCustomers(){
+  try{ await storageSet('customers', customers); }
+  catch(e){ console.error(e); alert('Could not save customer data (' + (e && e.message ? e.message : 'unknown error') + '). Please try again — and if it keeps failing, use "Download backup" to at least save a copy of what you have.'); }
+}
+async function saveOrders(){
+  try{ await storageSet('orders', orders); }
+  catch(e){ console.error(e); alert('Could not save order data (' + (e && e.message ? e.message : 'unknown error') + '). Please try again — and if it keeps failing, use "Download backup" to at least save a copy of what you have.'); }
+}
+async function resetData(){
+  if(!confirm('This permanently deletes every customer, order and payment saved here. Consider using "Download backup" first. Continue?')) return;
+  customers = []; orders = [];
+  await saveCustomers();
+  await saveOrders();
+  switchTab('dashboard');
+}
+
+// ---------- Backup / restore ----------
+function downloadBackup(){
+  const payload = {
+    app: 'trynet-orderbook',
+    exportedAt: new Date().toISOString(),
+    customers, orders
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'trynet-orderbook-backup-' + todayISO() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function triggerRestore(){
+  document.getElementById('restoreFile').click();
+}
+
+async function handleRestoreFile(evt){
+  const file = evt.target.files[0];
+  evt.target.value = '';
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!data || !Array.isArray(data.customers) || !Array.isArray(data.orders)){
+      alert('This file does not look like a valid Trynet Order Book backup.');
+      return;
+    }
+    const when = data.exportedAt ? formatDate(data.exportedAt) : 'the file';
+    const msg = `This will REPLACE all current data with the backup from ${when} (${data.customers.length} customers, ${data.orders.length} orders). This cannot be undone. Continue?`;
+    if(!confirm(msg)) return;
+    customers = data.customers;
+    orders = data.orders;
+    await saveCustomers();
+    await saveOrders();
+    dismissRecovery();
+    switchTab('dashboard');
+    alert('Backup restored.');
+  }catch(e){
+    console.error(e);
+    alert('Could not read that file. Make sure it is a backup exported from this app.');
+  }
+}
+
+// ---------- Recovery banner ----------
+function showRecoveryBanner(){
+  const el = document.getElementById('recoveryBanner');
+  if(!el || !pendingRecovery) return;
+  el.innerHTML = `
+    <div class="recovery-banner">
+      <div class="rb-text">
+        <strong>Your saved data looks empty, but a local copy was found on this device</strong>
+        <span>This can happen after a sync issue or a cleared session. Recover ${pendingRecovery.customers.length} customer(s) and ${pendingRecovery.orders.length} order(s) from that local copy?</span>
+      </div>
+      <div class="rb-actions">
+        <button class="btn small" type="button" onclick="applyRecovery()">Recover data</button>
+        <button class="btn small ghost" type="button" onclick="dismissRecovery()">Dismiss</button>
+      </div>
+    </div>`;
+}
+async function applyRecovery(){
+  if(!pendingRecovery) return;
+  customers = pendingRecovery.customers;
+  orders = pendingRecovery.orders;
+  await saveCustomers();
+  await saveOrders();
+  dismissRecovery();
+  switchTab('dashboard');
+}
+function dismissRecovery(){
+  pendingRecovery = null;
+  const el = document.getElementById('recoveryBanner');
+  if(el) el.innerHTML = '';
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.nav-item').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.tab').forEach(s=> s.hidden = (s.id !== 'tab-'+tab));
+  if(tab==='dashboard') renderDashboard();
+  else if(tab==='neworder') renderNewOrder();
+  else if(tab==='customers') renderCustomers();
+  else if(tab==='transactions') renderTransactions();
+}
+
+// ---------- Dashboard ----------
+function renderDashboard(){
+  const el = document.getElementById('tab-dashboard');
+  const todaysOrders = orders.filter(o=>isToday(o.date));
+  const salesToday = todaysOrders.reduce((s,o)=>s+Number(o.total),0);
+  let receivedToday = 0;
+  orders.forEach(o=> o.payments.forEach(p=>{ if(isToday(p.date)) receivedToday += Number(p.amount); }));
+  const totalOutstanding = orders.reduce((s,o)=> s + Math.max(orderDue(o),0), 0);
+
+  let allPayments = [];
+  orders.forEach(o=>{
+    const cust = customers.find(c=>c.id===o.customerId);
+    o.payments.forEach(p=> allPayments.push({...p, orderService:o.service, customerName: cust? cust.name : '—'}));
+  });
+  allPayments.sort((a,b)=> (b.date+b.id).localeCompare(a.date+a.id));
+  const recent = allPayments.slice(0,6);
+
+  el.innerHTML = `
+    <h1>Dashboard</h1>
+    <p class="lead">Today's summary and outstanding balances.</p>
+    <div class="grid-stats">
+      <div class="stat"><div class="num">${todaysOrders.length}</div><div class="label">Orders today</div></div>
+      <div class="stat"><div class="num">${inr(salesToday)}</div><div class="label">Sales today</div></div>
+      <div class="stat green"><div class="num">${inr(receivedToday)}</div><div class="label">Received today</div></div>
+      <div class="stat amber"><div class="num">${inr(totalOutstanding)}</div><div class="label">Total outstanding</div></div>
+    </div>
+    <div class="panel">
+      <h2>Recent payments</h2>
+      ${recent.length ? `
+      <table class="ledger">
+        <thead><tr><th>Date</th><th>Customer</th><th>For</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead>
+        <tbody>
+          ${recent.map(p=>`<tr><td>${formatDate(p.date)}</td><td>${esc(p.customerName)}</td><td>${esc(p.orderService)}</td><td>${esc(p.method)}</td><td class="num-cell">${inr(p.amount)}</td></tr>`).join('')}
+        </tbody>
+      </table>` : `<div class="empty">No payments recorded yet. Create an order to get started.</div>`}
+    </div>
+  `;
+}
+
+// ---------- New order ----------
+function renderNewOrder(){
+  const el = document.getElementById('tab-neworder');
+  foundCustomer = null; newOrderMode = null;
+  el.innerHTML = `
+    <h1>New order</h1>
+    <p class="lead">Look up the customer by phone, then record the order and any payment received.</p>
+    <div class="panel" style="margin-bottom:20px;">
+      <div class="row-2">
+        <div class="field">
+          <label for="no-phone">Phone number</label>
+          <input id="no-phone" type="tel" placeholder="10-digit number" />
+        </div>
+        <div class="field" style="display:flex;align-items:flex-end;">
+          <button class="btn ghost" type="button" onclick="lookupCustomer()" style="width:100%;">Check number</button>
+        </div>
+      </div>
+      <div id="cust-status"></div>
+    </div>
+    <form id="order-form" class="panel" onsubmit="return submitOrder(event)">
+      <div class="field">
+        <label for="no-name">Customer name</label>
+        <input id="no-name" type="text" placeholder="Enter name" disabled />
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="no-service">Service</label>
+          <input id="no-service" type="text" placeholder="e.g. Visiting cards" required />
+        </div>
+        <div class="field">
+          <label for="no-qty">Quantity</label>
+          <input id="no-qty" type="number" min="1" value="1" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="no-desc">Description / notes</label>
+        <textarea id="no-desc" rows="2" placeholder="Optional details, e.g. 500 copies, double-sided"></textarea>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="no-total">Total amount (₹)</label>
+          <input id="no-total" type="number" min="0" step="1" required oninput="updateRemaining()" />
+        </div>
+        <div class="field">
+          <label for="no-paid">Paid now (₹)</label>
+          <input id="no-paid" type="number" min="0" step="1" value="0" oninput="updateRemaining()" />
+        </div>
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label for="no-method">Payment method</label>
+          <select id="no-method">
+            <option>Cash</option><option>UPI</option><option>Card</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Balance due</label>
+          <div id="no-remaining" style="font-family:var(--font-display);font-size:20px;padding-top:4px;">₹0</div>
+        </div>
+      </div>
+      <button class="btn" type="submit">Save order</button>
+      <span id="save-msg" style="margin-left:12px;font-size:13px;color:var(--green);"></span>
+    </form>
+  `;
+}
+
+function lookupCustomer(){
+  const phone = document.getElementById('no-phone').value.trim();
+  const statusEl = document.getElementById('cust-status');
+  const nameInput = document.getElementById('no-name');
+  if(!phone){ statusEl.innerHTML = `<p style="color:var(--red);font-size:13px;margin:10px 0 0;">Enter a phone number first.</p>`; return; }
+  const c = customers.find(c=>c.phone===phone);
+  if(c){
+    foundCustomer = c; newOrderMode = 'existing';
+    nameInput.value = c.name; nameInput.disabled = true;
+    statusEl.innerHTML = `<p style="margin:12px 0 0;"><span class="badge settled">Existing customer</span> <span style="color:var(--ink-soft);font-size:12.5px;letter-spacing:.02em;">${esc(c.id)}</span></p>`;
+  } else {
+    foundCustomer = null; newOrderMode = 'new';
+    nameInput.value = ''; nameInput.disabled = false; nameInput.focus();
+    statusEl.innerHTML = `<p style="margin:12px 0 0;"><span class="badge new">New customer</span> enter their name below</p>`;
+  }
+}
+
+function updateRemaining(){
+  const total = Number(document.getElementById('no-total').value)||0;
+  const paid = Number(document.getElementById('no-paid').value)||0;
+  const remaining = Math.max(total-paid,0);
+  const rEl = document.getElementById('no-remaining');
+  rEl.textContent = inr(remaining);
+  rEl.style.color = remaining>0 ? 'var(--red)' : 'var(--green)';
+}
+
+async function submitOrder(e){
+  e.preventDefault();
+  const phone = document.getElementById('no-phone').value.trim();
+  const name = document.getElementById('no-name').value.trim();
+  const service = document.getElementById('no-service').value.trim();
+  const qty = Number(document.getElementById('no-qty').value)||1;
+  const desc = document.getElementById('no-desc').value.trim();
+  const total = Number(document.getElementById('no-total').value);
+  const paid = Number(document.getElementById('no-paid').value)||0;
+  const method = document.getElementById('no-method').value;
+
+  if(!phone){ alert('Enter a phone number.'); return false; }
+  if(newOrderMode===null){ alert('Click "Check number" first.'); return false; }
+  if(newOrderMode==='new' && !name){ alert('Enter the customer name.'); return false; }
+  if(!service || !total || total<=0){ alert('Enter the service and a total amount above zero.'); return false; }
+  if(paid>total){ alert('Paid amount cannot be more than the total.'); return false; }
+
+  let customerId;
+  if(newOrderMode==='existing'){
+    customerId = foundCustomer.id;
+  } else {
+    const c = { id: nextCustomerId(), name, phone, createdAt: todayISO() };
+    customers.push(c);
+    await saveCustomers();
+    customerId = c.id;
+  }
+
+  const order = {
+    id: nextOrderId(), customerId, service, description: desc, qty, total, date: todayISO(), notes:'',
+    payments: paid>0 ? [{ id: nextPaymentId(), amount: paid, method, date: todayISO() }] : []
+  };
+  orders.push(order);
+  await saveOrders();
+
+  document.getElementById('save-msg').textContent = `Saved — order ${order.id}`;
+  setTimeout(()=>{ renderNewOrder(); document.getElementById('no-phone').focus(); }, 700);
+  return false;
+}
+
+// ---------- Customers ----------
+function renderCustomers(){
+  const el = document.getElementById('tab-customers');
+  el.innerHTML = `
+    <h1>Customers</h1>
+    <p class="lead">Search by name or phone. Open a customer to see their order history and add payments.</p>
+    <div class="field" style="max-width:320px;">
+      <input id="cust-search" type="text" placeholder="Search name or phone" oninput="renderCustomerList()" />
+    </div>
+    <div id="cust-list"></div>
+  `;
+  renderCustomerList();
+}
+
+function renderCustomerList(){
+  const listEl = document.getElementById('cust-list');
+  const q = (document.getElementById('cust-search')?.value||'').trim().toLowerCase();
+  let list = customers.filter(c=> !q || c.name.toLowerCase().includes(q) || c.phone.includes(q));
+  list = list.slice().sort((a,b)=> b.id.localeCompare(a.id));
+
+  if(!list.length){
+    listEl.innerHTML = `<div class="empty">${customers.length? 'No customers match that search.' : 'No customers yet. Add one from New order.'}</div>`;
+    return;
+  }
+
+  listEl.innerHTML = list.map(c=>{
+    const os = orders.filter(o=>o.customerId===c.id).sort((a,b)=> b.id.localeCompare(a.id));
+    const billed = os.reduce((s,o)=>s+Number(o.total),0);
+    const paid = os.reduce((s,o)=>s+orderPaid(o),0);
+    const due = billed-paid;
+    return `
+    <details class="customer">
+      <summary>
+        <div>
+          <div style="font-weight:600;">${esc(c.name)}</div>
+          <div style="font-size:12.5px;color:var(--ink-soft);letter-spacing:.02em;">${esc(c.id)} · ${esc(c.phone)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="num-cell" style="font-size:15px;">${inr(due)}</div>
+          <span class="badge ${due>0?'due':'settled'}">${due>0?'Due':'Settled'}</span>
+        </div>
+      </summary>
+      <div class="cust-inner">
+        <div style="display:flex;gap:24px;margin-bottom:14px;font-size:13px;color:var(--ink-soft);">
+          <span>Total billed <b style="color:var(--ink);">${inr(billed)}</b></span>
+          <span>Total paid <b style="color:var(--ink);">${inr(paid)}</b></span>
+        </div>
+        ${os.length ? os.map(o=>renderOrderRow(o)).join('') : `<div class="empty">No orders yet.</div>`}
+      </div>
+    </details>`;
+  }).join('');
+}
+
+function renderOrderRow(o){
+  const paid = orderPaid(o);
+  const due = orderDue(o);
+  return `
+  <div style="border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin-bottom:10px;">
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-weight:600;font-size:14px;">${esc(o.service)}</div>
+        <div style="font-size:12.5px;color:var(--ink-soft);">${esc(o.id)} · ${formatDate(o.date)}${o.description? ' · '+esc(o.description) : ''}</div>
+      </div>
+      <div style="text-align:right;font-size:13px;">
+        <div>total <b class="num-cell" style="display:inline;">${inr(o.total)}</b></div>
+        <div>paid <b class="num-cell" style="display:inline;color:var(--green);">${inr(paid)}</b></div>
+        <div>due <b class="num-cell" style="display:inline;color:${due>0?'var(--red)':'var(--green)'};">${inr(due)}</b></div>
+      </div>
+    </div>
+    ${due>0 ? `
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="number" min="1" max="${due}" placeholder="Amount" id="pay-amt-${o.id}" style="width:110px;padding:7px 9px;border:1px solid var(--line);border-radius:4px;" />
+      <select id="pay-method-${o.id}" style="padding:7px 9px;border:1px solid var(--line);border-radius:4px;">
+        <option>Cash</option><option>UPI</option><option>Card</option><option>Other</option>
+      </select>
+      <button class="btn small" type="button" onclick="addPayment('${o.id}')">Record payment</button>
+    </div>` : ''}
+  </div>`;
+}
+
+async function addPayment(orderId){
+  const amtEl = document.getElementById('pay-amt-'+orderId);
+  const methodEl = document.getElementById('pay-method-'+orderId);
+  const amt = Number(amtEl.value);
+  const order = orders.find(o=>o.id===orderId);
+  if(!order) return;
+  const due = orderDue(order);
+  if(!amt || amt<=0){ alert('Enter an amount greater than zero.'); return; }
+  if(amt>due){ alert('Amount cannot be more than the balance due ('+inr(due)+').'); return; }
+  order.payments.push({ id: nextPaymentId(), amount: amt, method: methodEl.value, date: todayISO() });
+  await saveOrders();
+  renderCustomerList();
+}
+
+// ---------- Transactions ----------
+function renderTransactions(){
+  const el = document.getElementById('tab-transactions');
+  let list = [];
+  orders.forEach(o=>{
+    const c = customers.find(c=>c.id===o.customerId);
+    o.payments.forEach(p=> list.push({...p, customerName: c? c.name : '—', service:o.service, orderId:o.id}));
+  });
+  list.sort((a,b)=> (b.date+b.id).localeCompare(a.date+a.id));
+  const total = list.reduce((s,p)=>s+Number(p.amount),0);
+
+  el.innerHTML = `
+    <h1>Transactions</h1>
+    <p class="lead">Every payment received, most recent first.</p>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <span style="font-size:13px;color:var(--ink-soft);">${list.length} payment${list.length===1?'':'s'} recorded</span>
+        <span style="font-family:var(--font-display);font-size:24px;color:var(--navy);">${inr(total)}</span>
+      </div>
+      ${list.length ? `
+      <table class="ledger">
+        <thead><tr><th>Date</th><th>Customer</th><th>Order</th><th>Method</th><th style="text-align:right">Amount</th></tr></thead>
+        <tbody>
+          ${list.map(p=>`<tr><td>${formatDate(p.date)}</td><td>${esc(p.customerName)}</td><td>${esc(p.service)} <span style="color:var(--ink-soft);font-size:12px;">(${esc(p.orderId)})</span></td><td>${esc(p.method)}</td><td class="num-cell">${inr(p.amount)}</td></tr>`).join('')}
+        </tbody>
+      </table>` : `<div class="empty">No transactions yet.</div>`}
+    </div>
+  `;
+}
+
+// ---------- Init ----------
+async function init(){
+  document.getElementById('todayDate').textContent = formatDate(new Date());
+  await loadAll();
+  switchTab('dashboard');
+}
+init();
+</script>
+</body>
+</html>
