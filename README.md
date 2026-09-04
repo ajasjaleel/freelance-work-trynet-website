@@ -1,1 +1,1 @@
-Visit https://ajasjaleel253.github.io/freelance-work-trynet-website/
+Visit https://ajasjaleel.github.io/freelance-work-trynet-website/
